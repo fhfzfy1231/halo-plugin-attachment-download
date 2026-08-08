@@ -72,18 +72,16 @@ function getSize(attachment: AttachmentLike): number {
       </div>
     </div>
 
-    <button type="button" class="select-button" @click.stop="selectorVisible = true">
+    <button type="button" class="select-button" @click="selectorVisible = true">
       <RiDownload2Line />
       {{ node.attrs.href ? '重新选择' : '选择附件' }}
     </button>
 
     <AttachmentSelectorModal
-      v-if="selectorVisible"
       v-model:visible="selectorVisible"
       :min="1"
       :max="1"
       @select="onAttachmentSelect"
-      @close="selectorVisible = false"
     />
   </NodeViewWrapper>
 </template>
