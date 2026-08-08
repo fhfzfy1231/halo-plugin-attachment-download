@@ -16,7 +16,7 @@ spec:
   repo: https://github.com/fhfzfy1231/halo-plugin-attachment-download
   issues: https://github.com/fhfzfy1231/halo-plugin-attachment-download/issues
   displayName: "附件下载"
-  description: "为 Halo 默认编辑器提供可从附件库选择文件的下载按钮，避免 XML 等文件被浏览器直接预览。"
+  description: "为 Halo 默认编辑器提供受权限保护的附件下载按钮，支持从附件库选择文件并强制下载 XML 等附件。"
   license:
     - name: "GPL-3.0"
       url: "https://github.com/fhfzfy1231/halo-plugin-attachment-download/blob/main/LICENSE"

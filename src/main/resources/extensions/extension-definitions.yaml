@@ -1,0 +1,9 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: ExtensionDefinition
+metadata:
+  name: attachment-download-head-processor
+spec:
+  extensionPointName: template-head-processor
+  className: team.foxbridge.attachmentdownload.AttachmentDownloadHeadProcessor
+  displayName: "附件下载权限脚本"
+  description: "在主题页面加载附件下载权限检查脚本。"

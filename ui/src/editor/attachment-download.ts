@@ -53,10 +53,42 @@ const AttachmentDownload = Node.create<ExtensionOptions>({
 
   addAttributes() {
     return {
-      href: { default: '' },
-      filename: { default: '' },
-      mediaType: { default: '' },
-      size: { default: 0 },
+      // href is retained only so v1.0.x content can be detected and migrated.
+      // It is intentionally never rendered by v1.1.0.
+      href: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('href') || '',
+        renderHTML: () => ({}),
+      },
+      attachmentName: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-attachment-name') || '',
+        renderHTML: (attributes) =>
+          attributes.attachmentName
+            ? { 'data-attachment-name': String(attributes.attachmentName) }
+            : {},
+      },
+      filename: {
+        default: '',
+        parseHTML: (element) =>
+          element.getAttribute('data-filename') || element.getAttribute('filename') || '',
+        renderHTML: (attributes) =>
+          attributes.filename ? { 'data-filename': String(attributes.filename) } : {},
+      },
+      mediaType: {
+        default: '',
+        parseHTML: (element) =>
+          element.getAttribute('data-media-type') || element.getAttribute('mediaType') || '',
+        renderHTML: (attributes) =>
+          attributes.mediaType ? { 'data-media-type': String(attributes.mediaType) } : {},
+      },
+      size: {
+        default: 0,
+        parseHTML: (element) =>
+          Number(element.getAttribute('data-size') || element.getAttribute('size') || 0),
+        renderHTML: (attributes) =>
+          Number(attributes.size) > 0 ? { 'data-size': String(attributes.size) } : {},
+      },
     }
   },
 
@@ -107,20 +139,28 @@ const AttachmentDownload = Node.create<ExtensionOptions>({
   },
 
   renderHTML({ HTMLAttributes, node }) {
-    const href = String(node.attrs.href || '')
+    const attachmentName = String(node.attrs.attachmentName || '')
     const filename = String(node.attrs.filename || '附件')
     const size = Number(node.attrs.size || 0)
     const sizeLabel = formatFileSize(size)
 
     const description = sizeLabel ? `${filename} · ${sizeLabel}` : filename
-    const wrapperAttrs = mergeAttributes(HTMLAttributes, {
+    const safeAttributes = { ...HTMLAttributes }
+    delete safeAttributes.href
+    const wrapperAttrs = mergeAttributes(safeAttributes, {
       'data-halo-attachment-download': 'true',
       style: CARD_STYLE,
     })
 
-    if (!href) {
-      return ['div', wrapperAttrs, ['span', {}, '附件未选择']]
+    if (!attachmentName) {
+      return [
+        'div',
+        wrapperAttrs,
+        ['span', {}, node.attrs.href ? '附件需要重新选择后才能启用权限下载' : '附件未选择'],
+      ]
     }
+
+    const protectedHref = `/apis/api.attachment-download.foxbridge.team/v1alpha1/downloads/${encodeURIComponent(attachmentName)}`
 
     return [
       'div',
@@ -129,9 +169,9 @@ const AttachmentDownload = Node.create<ExtensionOptions>({
       [
         'a',
         {
-          href,
+          href: protectedHref,
           download: filename,
-          'data-halo-download-link': 'true',
+          'data-halo-protected-download': 'true',
           style: BUTTON_STYLE,
         },
         '下载文件',

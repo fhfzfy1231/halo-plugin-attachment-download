@@ -19,7 +19,11 @@ function onAttachmentSelect(attachments: AttachmentLike[]) {
   const simple = utils.attachment.convertToSimple(attachment)
   const href = simple?.url ?? utils.attachment.getUrl(attachment) ?? ''
   props.updateAttributes({
-    href,
+    // Keep href empty for newly selected attachments. Published HTML must not
+    // expose the original public permalink because downloads are protected by
+    // the plugin endpoint starting with v1.1.0.
+    href: '',
+    attachmentName: getAttachmentName(attachment),
     filename: simple?.alt || getFilename(attachment, href),
     mediaType: simple?.mediaType || getMediaType(attachment),
     size: getSize(attachment),
@@ -29,6 +33,11 @@ function onAttachmentSelect(attachments: AttachmentLike[]) {
 
 function isFullAttachment(value: AttachmentLike): value is Attachment {
   return typeof value === 'object' && value !== null && 'spec' in value
+}
+
+function getAttachmentName(attachment: AttachmentLike): string {
+  if (!isFullAttachment(attachment)) return ''
+  return attachment.metadata.name ?? ''
 }
 
 function getFilename(attachment: AttachmentLike, href: string): string {
@@ -68,13 +77,19 @@ function getSize(attachment: AttachmentLike): number {
       <RiFileLine class="file-icon" />
       <div class="file-text">
         <strong>{{ node.attrs.filename || '尚未选择附件' }}</strong>
-        <span>{{ node.attrs.href || '从 Halo 附件库选择需要提供下载的文件' }}</span>
+        <span v-if="node.attrs.attachmentName">
+          已启用权限保护 · {{ node.attrs.attachmentName }}
+        </span>
+        <span v-else-if="node.attrs.href">
+          旧版附件块，请重新选择一次附件以启用权限保护
+        </span>
+        <span v-else>从 Halo 附件库选择需要提供下载的文件</span>
       </div>
     </div>
 
     <button type="button" class="select-button" @click="selectorVisible = true">
       <RiDownload2Line />
-      {{ node.attrs.href ? '重新选择' : '选择附件' }}
+      {{ node.attrs.attachmentName || node.attrs.href ? '重新选择' : '选择附件' }}
     </button>
 
     <AttachmentSelectorModal

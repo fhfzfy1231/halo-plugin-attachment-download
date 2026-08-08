@@ -1,0 +1,13 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: attachment-download-role-download
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "附件下载"
+    rbac.authorization.halo.run/display-name: "下载受保护附件"
+rules:
+  - apiGroups: ["api.attachment-download.foxbridge.team"]
+    resources: ["attachment-download/downloads"]
+    verbs: ["get"]
