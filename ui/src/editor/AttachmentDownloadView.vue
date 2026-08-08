@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import type { Attachment } from '@halo-dev/api-client'
 import { utils, type AttachmentLike } from '@halo-dev/ui-shared'
-import { NodeViewWrapper } from '@halo-dev/richtext-editor'
+import { NodeViewWrapper, nodeViewProps } from '@halo-dev/richtext-editor'
 import { ref } from 'vue'
 import RiDownload2Line from '~icons/ri/download-2-line'
 import RiFileLine from '~icons/ri/file-line'
 
-const props = defineProps<{
-  node: { attrs: Record<string, unknown> }
-  updateAttributes: (attributes: Record<string, unknown>) => void
-}>()
+// Halo's VueNodeViewRenderer passes a complete set of NodeView props.  Using the
+// shared prop definition is important here: the renderer replaces the wrapper
+// component props when a node is updated after selecting an attachment.
+const props = defineProps(nodeViewProps)
 const selectorVisible = ref(false)
 
 function onAttachmentSelect(attachments: AttachmentLike[]) {
   const attachment = attachments[0]
   if (!attachment) return
 
-  const href = utils.attachment.getUrl(attachment) ?? ''
+  const simple = utils.attachment.convertToSimple(attachment)
+  const href = simple?.url ?? utils.attachment.getUrl(attachment) ?? ''
   props.updateAttributes({
     href,
-    filename: getFilename(attachment, href),
-    mediaType: getMediaType(attachment),
+    filename: simple?.alt || getFilename(attachment, href),
+    mediaType: simple?.mediaType || getMediaType(attachment),
     size: getSize(attachment),
   })
   selectorVisible.value = false
@@ -58,7 +59,11 @@ function getSize(attachment: AttachmentLike): number {
 </script>
 
 <template>
-  <NodeViewWrapper class="attachment-download-editor" data-drag-handle>
+  <NodeViewWrapper
+    class="attachment-download-editor"
+    contenteditable="false"
+    :class="{ 'is-selected': selected }"
+  >
     <div class="file-info">
       <RiFileLine class="file-icon" />
       <div class="file-text">
@@ -67,15 +72,18 @@ function getSize(attachment: AttachmentLike): number {
       </div>
     </div>
 
-    <button type="button" class="select-button" @click="selectorVisible = true">
+    <button type="button" class="select-button" @click.stop="selectorVisible = true">
       <RiDownload2Line />
       {{ node.attrs.href ? '重新选择' : '选择附件' }}
     </button>
 
     <AttachmentSelectorModal
+      v-if="selectorVisible"
       v-model:visible="selectorVisible"
+      :min="1"
       :max="1"
       @select="onAttachmentSelect"
+      @close="selectorVisible = false"
     />
   </NodeViewWrapper>
 </template>
@@ -91,6 +99,11 @@ function getSize(attachment: AttachmentLike): number {
   border: 1px solid #dbe3ee;
   border-radius: 12px;
   background: #f8fafc;
+}
+
+.attachment-download-editor.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 12%);
 }
 
 .file-info {
