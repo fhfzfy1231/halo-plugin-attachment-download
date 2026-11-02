@@ -1,17 +1,21 @@
 plugins {
-    id 'com.github.node-gradle.node' version '7.1.0'
+    id 'base'
 }
 
-node {
-    version = '20.12.2'
-    pnpmVersion = '9.0.0'
-    download = true
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+
+tasks.register('buildUi', Exec) {
+    workingDir projectDir
+    if (isWindows) {
+        commandLine 'cmd', '/c', 'pnpm', 'build'
+    } else {
+        commandLine 'pnpm', 'build'
+    }
 }
 
-pnpm_build {
-    dependsOn pnpm_install
-}
-
-tasks.register('assemble') {
-    dependsOn pnpm_build
+// Ensure assemble task exists; if dist/ already exists (built by GitHub Action pnpm step), skip re-execution
+tasks.named('assemble') {
+    if (!file('dist').exists()) {
+        dependsOn tasks.named('buildUi')
+    }
 }
