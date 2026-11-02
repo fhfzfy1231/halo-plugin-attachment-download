@@ -5,9 +5,7 @@ import run.halo.app.plugin.BasePlugin;
 import run.halo.app.plugin.PluginContext;
 
 /**
- * <p>Plugin main class to manage the lifecycle of the plugin.</p>
- * <p>This class must be public and have a public constructor.</p>
- * <p>Only one main class extending {@link BasePlugin} is allowed per plugin.</p>
+ * Plugin main class to manage the lifecycle of the plugin.
  *
  * @author Akagi_Zen
  * @since 1.0.0
@@ -21,11 +19,11 @@ public class AttachmentDownloadPlugin extends BasePlugin {
 
     @Override
     public void start() {
-        System.out.println("插件启动成功！");
+        System.out.println("附件下载插件启动成功！");
     }
 
     @Override
     public void stop() {
-        System.out.println("插件停止！");
+        System.out.println("附件下载插件已停止！");
     }
 }

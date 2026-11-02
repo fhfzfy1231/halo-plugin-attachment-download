@@ -46,10 +46,9 @@ tasks.named('classes') {
 }
 
 tasks.named('generatePluginComponentsIdx') {
-    notCompatibleWithConfigurationCache('This task invokes "Task.project" at execution time, which is not supported with configuration cache.')
+    notCompatibleWithConfigurationCache('This task invokes "Task.project" at execution time, which is not supported')
 }
 
 halo {
     version = '2.25'
 }
-

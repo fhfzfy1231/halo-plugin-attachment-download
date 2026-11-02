@@ -41,7 +41,7 @@ public class AttachmentDownloadEndpoint implements CustomEndpoint {
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return RouterFunctions.route()
-            .GET("/downloads/{name}", this::download)
+            .GET("/downloads/{name}", this::handleDownload)
             .build();
     }
 
@@ -50,68 +50,52 @@ public class AttachmentDownloadEndpoint implements CustomEndpoint {
         return GROUP_VERSION;
     }
 
-    private Mono<ServerResponse> download(ServerRequest request) {
-        // The front-end performs this lightweight request first. Reaching this
-        // handler already means Halo RBAC granted the download permission.
+    private Mono<ServerResponse> handleDownload(ServerRequest request) {
+        // Fast-path for permission check from client guard (download-guard.js)
         if (request.queryParam("check").filter("1"::equals).isPresent()) {
             return ServerResponse.noContent().build();
         }
 
-        var attachmentName = request.pathVariable("name");
-        return client.fetch(Attachment.class, attachmentName)
-            .flatMap(attachment -> proxyAttachment(request, attachment))
+        String name = request.pathVariable("name");
+        return client.fetch(Attachment.class, name)
+            .flatMap(attachment -> downloadAttachment(attachment))
             .switchIfEmpty(ServerResponse.notFound().build());
     }
 
-    private Mono<ServerResponse> proxyAttachment(ServerRequest request, Attachment attachment) {
-        var status = attachment.getStatus();
-        if (status == null || status.getPermalink() == null || status.getPermalink().isBlank()) {
+    private Mono<ServerResponse> downloadAttachment(Attachment attachment) {
+        Attachment.AttachmentStatus status = attachment.getStatus();
+        if (status == null || status.getPermalink() == null) {
             return ServerResponse.notFound().build();
         }
 
-        URI sourceUri;
-        try {
-            sourceUri = URI.create(status.getPermalink());
-            if (!sourceUri.isAbsolute()) {
-                sourceUri = request.uri().resolve(sourceUri);
-            }
-        } catch (IllegalArgumentException ex) {
-            return ServerResponse.notFound().build();
+        URI uri = URI.create(status.getPermalink());
+        String filename = attachment.getSpec().getDisplayName();
+        if (filename == null || filename.isBlank()) {
+            filename = attachment.getMetadata().getName();
         }
 
-        var spec = attachment.getSpec();
-        var filename = spec != null && spec.getDisplayName() != null && !spec.getDisplayName().isBlank()
-            ? spec.getDisplayName()
-            : attachment.getMetadata().getName();
-
-        Flux<DataBuffer> body = webClient.get()
-            .uri(sourceUri)
-            .retrieve()
-            .bodyToFlux(DataBuffer.class);
-
-        var response = ServerResponse.ok()
-            .header(CONTENT_DISPOSITION,
-                ContentDisposition.attachment()
-                    .filename(filename, StandardCharsets.UTF_8)
-                    .build()
-                    .toString())
-            .header(CACHE_CONTROL, "private, no-store")
-            .header("X-Content-Type-Options", "nosniff");
-
-        if (spec != null && spec.getMediaType() != null && !spec.getMediaType().isBlank()) {
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (status.getMediaType() != null) {
             try {
-                response.contentType(MediaType.parseMediaType(spec.getMediaType()));
-            } catch (IllegalArgumentException ignored) {
-                response.contentType(MediaType.APPLICATION_OCTET_STREAM);
+                mediaType = MediaType.parseMediaType(status.getMediaType());
+            } catch (Exception ignored) {
             }
-        } else {
-            response.contentType(MediaType.APPLICATION_OCTET_STREAM);
         }
 
-        if (spec != null && spec.getSize() != null && spec.getSize() > 0) {
-            response.contentLength(spec.getSize());
-        }
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+            .filename(filename, StandardCharsets.UTF_8)
+            .build();
 
-        return response.body(body, DataBuffer.class);
+        return webClient.get()
+            .uri(uri)
+            .exchangeToMono(response -> {
+                Flux<DataBuffer> body = response.bodyToFlux(DataBuffer.class);
+                return ServerResponse.status(response.statusCode())
+                    .contentType(mediaType)
+                    .header(CONTENT_DISPOSITION, contentDisposition.toString())
+                    .header(CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(body, DataBuffer.class);
+            });
     }
 }
