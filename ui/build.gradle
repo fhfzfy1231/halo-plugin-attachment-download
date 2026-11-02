@@ -13,9 +13,8 @@ tasks.register('buildUi', Exec) {
     }
 }
 
-// Ensure assemble task exists; if dist/ already exists (built by GitHub Action pnpm step), skip re-execution
 tasks.named('assemble') {
-    if (!file('dist').exists()) {
+    if (!file('build/dist').exists()) {
         dependsOn tasks.named('buildUi')
     }
 }
